@@ -13,6 +13,10 @@ type AirAlarmData = {
   dangerLevel: 0 | 1 | 2;
   atmosAlarm: BooleanLike; // fix this
   fireAlarm: BooleanLike;
+  faultStatus: 0 | 1 | 2;
+  faultLocation: string;
+  sensor: BooleanLike;
+  allowLinkChange: BooleanLike;
   envData: {
     name: string;
     value: string; // preformatted in backend, shorter code that way.
@@ -39,10 +43,17 @@ type AirAlarmData = {
     danger: BooleanLike;
   }[];
   thresholdTypeMap: Record<string, number>;
+  ac: {
+    enabled: BooleanLike;
+    active: BooleanLike;
+    target: number;
+    min: number;
+    max: number;
+  };
 };
 
-export const AirAlarm = (props, context) => {
-  const { act, data } = useBackend<AirAlarmData>(context);
+export const AirAlarm = (props) => {
+  const { act, data } = useBackend<AirAlarmData>();
   const locked = data.locked && !data.siliconUser;
   return (
     <Window width={475} height={650}>
@@ -55,8 +66,8 @@ export const AirAlarm = (props, context) => {
   );
 };
 
-const AirAlarmStatus = (props, context) => {
-  const { data } = useBackend<AirAlarmData>(context);
+const AirAlarmStatus = (props) => {
+  const { data } = useBackend<AirAlarmData>();
   const { envData } = data;
   const dangerMap = {
     0: {
@@ -72,7 +83,22 @@ const AirAlarmStatus = (props, context) => {
       localStatusText: 'Danger (Internals Required)',
     },
   };
+  const faultMap = {
+    0: {
+      color: 'green',
+      areaFaultText: 'None',
+    },
+    1: {
+      color: 'purple',
+      areaFaultText: 'Manual Trigger',
+    },
+    2: {
+      color: 'average',
+      areaFaultText: 'Automatic Detection',
+    },
+  };
   const localStatus = dangerMap[data.dangerLevel] || dangerMap[0];
+  const areaFault = faultMap[data.faultStatus] || faultMap[0];
   return (
     <Section title="Air Status">
       <LabeledList>
@@ -89,15 +115,34 @@ const AirAlarmStatus = (props, context) => {
                 </LabeledList.Item>
               );
             })}
-            <LabeledList.Item label="Local status" color={localStatus.color}>
+            <LabeledList.Item label="Local Status" color={localStatus.color}>
               {localStatus.localStatusText}
             </LabeledList.Item>
             <LabeledList.Item
-              label="Area status"
+              label="Area Status"
               color={data.atmosAlarm || data.fireAlarm ? 'bad' : 'good'}>
               {(data.atmosAlarm && 'Atmosphere Alarm') ||
                 (data.fireAlarm && 'Fire Alarm') ||
                 'Nominal'}
+            </LabeledList.Item>
+            <LabeledList.Item
+              label="Air Conditioning Status"
+              color={
+                data.ac.enabled ? (data.ac.active ? 'average' : 'good') : 'gray'
+              }>
+              {data.ac.enabled
+                ? data.ac.active
+                  ? 'Active'
+                  : 'Idle'
+                : 'Disabled'}
+            </LabeledList.Item>
+            <LabeledList.Item label="Fault Status" color={areaFault.color}>
+              {areaFault.areaFaultText}
+            </LabeledList.Item>
+            <LabeledList.Item
+              label="Fault Location"
+              color={data.faultLocation ? 'blue' : 'green'}>
+              {data.faultLocation || 'None'}
             </LabeledList.Item>
           </>
         )) || (
@@ -128,6 +173,10 @@ const AIR_ALARM_ROUTES = {
     title: 'Scrubber Controls',
     component: () => AirAlarmControlScrubbers,
   },
+  ac: {
+    title: 'Air Conditioning Controls',
+    component: () => AirAlarmAirConditioningControls,
+  },
   modes: {
     title: 'Operating Mode',
     component: () => AirAlarmControlModes,
@@ -140,8 +189,8 @@ const AIR_ALARM_ROUTES = {
 
 type Screen = keyof typeof AIR_ALARM_ROUTES;
 
-const AirAlarmControl = (props, context) => {
-  const [screen, setScreen] = useLocalState<Screen>(context, 'screen', 'home');
+const AirAlarmControl = (props) => {
+  const [screen, setScreen] = useLocalState<Screen>('screen', 'home');
   const route = AIR_ALARM_ROUTES[screen] || AIR_ALARM_ROUTES.home;
   const Component = route.component();
   return (
@@ -164,10 +213,17 @@ const AirAlarmControl = (props, context) => {
 //  Home screen
 // --------------------------------------------------------
 
-const AirAlarmControlHome = (props, context) => {
-  const { act, data } = useBackend<AirAlarmData>(context);
-  const [screen, setScreen] = useLocalState<Screen>(context, 'screen', 'home');
-  const { selectedModePath, panicSiphonPath, filteringPath, atmosAlarm } = data;
+const AirAlarmControlHome = (props) => {
+  const { act, data } = useBackend<AirAlarmData>();
+  const [screen, setScreen] = useLocalState<Screen>('screen', 'home');
+  const {
+    selectedModePath,
+    panicSiphonPath,
+    filteringPath,
+    atmosAlarm,
+    sensor,
+    allowLinkChange,
+  } = data;
   const isPanicSiphoning = selectedModePath === panicSiphonPath;
   return (
     <>
@@ -202,6 +258,12 @@ const AirAlarmControlHome = (props, context) => {
       />
       <Box mt={1} />
       <Button
+        icon="fan"
+        content="Air Conditioning Controls"
+        onClick={() => setScreen('ac')}
+      />
+      <Box mt={1} />
+      <Button
         icon="cog"
         content="Operating Mode"
         onClick={() => setScreen('modes')}
@@ -212,6 +274,16 @@ const AirAlarmControlHome = (props, context) => {
         content="Alarm Thresholds"
         onClick={() => setScreen('thresholds')}
       />
+      {!!sensor && !!allowLinkChange && (
+        <Box mt={1}>
+          <Button.Confirm
+            icon="link-slash"
+            content="Disconnect Sensor"
+            color="danger"
+            onClick={() => act('disconnect_sensor')}
+          />
+        </Box>
+      )}
     </>
   );
 };
@@ -219,8 +291,8 @@ const AirAlarmControlHome = (props, context) => {
 //  Vents
 // --------------------------------------------------------
 
-const AirAlarmControlVents = (props, context) => {
-  const { data } = useBackend<AirAlarmData>(context);
+const AirAlarmControlVents = (props) => {
+  const { data } = useBackend<AirAlarmData>();
   const { vents } = data;
   if (!vents || vents.length === 0) {
     return <span>Nothing to show</span>;
@@ -237,8 +309,8 @@ const AirAlarmControlVents = (props, context) => {
 //  Scrubbers
 // --------------------------------------------------------
 
-const AirAlarmControlScrubbers = (props, context) => {
-  const { data } = useBackend<AirAlarmData>(context);
+const AirAlarmControlScrubbers = (props) => {
+  const { data } = useBackend<AirAlarmData>();
   const { scrubbers } = data;
   if (!scrubbers || scrubbers.length === 0) {
     return <span>Nothing to show</span>;
@@ -255,8 +327,8 @@ const AirAlarmControlScrubbers = (props, context) => {
 //  Modes
 // --------------------------------------------------------
 
-const AirAlarmControlModes = (props, context) => {
-  const { act, data } = useBackend<AirAlarmData>(context);
+const AirAlarmControlModes = (props) => {
+  const { act, data } = useBackend<AirAlarmData>();
   const { modes, selectedModePath } = data;
   if (!modes || modes.length === 0) {
     return <span>Nothing to show</span>;
@@ -296,8 +368,8 @@ type EditingModalProps = {
   finish: () => void;
 };
 
-const EditingModal = (props: EditingModalProps, context) => {
-  const { act, data } = useBackend<AirAlarmData>(context);
+const EditingModal = (props: EditingModalProps) => {
+  const { act, data } = useBackend<AirAlarmData>();
   const { id, name, type, typeVar, typeName, unit, oldValue, finish } = props;
   return (
     <Modal>
@@ -351,12 +423,12 @@ const EditingModal = (props: EditingModalProps, context) => {
   );
 };
 
-const AirAlarmControlThresholds = (props, context) => {
-  const { act, data } = useBackend<AirAlarmData>(context);
+const AirAlarmControlThresholds = (props) => {
+  const { act, data } = useBackend<AirAlarmData>();
   const [activeModal, setActiveModal] = useLocalState<Omit<
     EditingModalProps,
     'oldValue'
-  > | null>(context, 'tlvModal', null);
+  > | null>('tlvModal', null);
   const { tlvSettings, thresholdTypeMap } = data;
   return (
     <>
@@ -364,16 +436,16 @@ const AirAlarmControlThresholds = (props, context) => {
         <Table.Row>
           <Table.Cell bold>Threshold</Table.Cell>
           <Table.Cell bold color="bad">
-            Minimum Hazard
+            Danger Below
           </Table.Cell>
           <Table.Cell bold color="average">
-            Minimum Warning
+            Warning Below
           </Table.Cell>
           <Table.Cell bold color="average">
-            Maximum Warning
+            Warning Above
           </Table.Cell>
           <Table.Cell bold color="bad">
-            Maximum Hazard
+            Danger Above
           </Table.Cell>
           <Table.Cell bold>Actions</Table.Cell>
         </Table.Row>
@@ -494,6 +566,52 @@ const AirAlarmControlThresholds = (props, context) => {
           {...activeModal}
         />
       )}
+    </>
+  );
+};
+
+// Air Conditioning
+// --------------------------------------------------------
+
+const AirAlarmAirConditioningControls = (_props) => {
+  const {
+    act,
+    data: {
+      ac: { enabled, target, min, max },
+    },
+  } = useBackend<AirAlarmData>();
+  return (
+    <>
+      <Button
+        icon="fire"
+        content="Toggle Air Conditioning"
+        color={enabled && 'good'}
+        onClick={() => act('air_conditioning', { value: !!enabled })}
+      />
+      <Box mt={1} />
+      <LabeledList>
+        <LabeledList.Item label={'Target Temperature'}>
+          <>
+            <NumberInput
+              value={target}
+              minValue={min}
+              maxValue={max}
+              onChange={(_e, target: number) =>
+                act('set_ac_target', { target })
+              }
+              unit="K"
+              tooltip="Change the target temperature of the heater"
+              disabled={!enabled}
+            />
+            <Button
+              icon="thermometer-quarter"
+              content="Default"
+              color={enabled && 'good'}
+              onClick={() => act('default_ac_target')}
+            />
+          </>
+        </LabeledList.Item>
+      </LabeledList>
     </>
   );
 };

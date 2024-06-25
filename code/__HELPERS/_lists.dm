@@ -391,10 +391,8 @@
  * Returns TRUE if the list had nulls, FALSE otherwise
 **/
 /proc/list_clear_nulls(list/list_to_clear)
-	var/start_len = list_to_clear.len
-	var/list/new_list = new(start_len)
-	list_to_clear -= new_list
-	return list_to_clear.len < start_len
+	return (list_to_clear.RemoveAll(null) > 0)
+
 
 /*
  * Returns list containing all the entries from first list that are not present in second.
@@ -436,22 +434,19 @@
  * B would have a 30% chance of being picked,
  * C would have a 10% chance of being picked,
  * and D would have a 0% chance of being picked.
- * You should only pass integers in.
  */
-/proc/pick_weight(list/list_to_pick)
+/proc/pick_weight(list/list_to_pick) // monkestation edit: port superior pick_weight impl
 	var/total = 0
 	var/item
 	for(item in list_to_pick)
-		if(!list_to_pick[item])
-			list_to_pick[item] = 0
+		if(isnull(list_to_pick[item]))
+			stack_trace("weighted_pick given null weight: [json_encode(list_to_pick)]")
 		total += list_to_pick[item]
-
-	total = rand(1, total)
+	total = rand() * total
 	for(item in list_to_pick)
 		total -= list_to_pick[item]
-		if(total <= 0 && list_to_pick[item])
+		if(total <= 0)
 			return item
-
 	return null
 
 /**
@@ -533,6 +528,13 @@
 		var/picked = rand(1,list_to_pick.len)
 		. = list_to_pick[picked]
 		list_to_pick.Cut(picked,picked+1) //Cut is far more efficient that Remove()
+
+/// Pick a random element from the list and remove it from the list.
+/proc/pick_n_take_weighted(list/list_to_pick)
+	if(length(list_to_pick))
+		var/picked = pick_weight(list_to_pick)
+		list_to_pick -= picked
+		return picked
 
 ///Returns the top(last) element from the list and removes it from the list (typical stack function)
 /proc/pop(list/L)

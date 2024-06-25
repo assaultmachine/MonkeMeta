@@ -45,14 +45,10 @@ const CharacterProfiles = (props: {
   );
 };
 
-export const CharacterPreferenceWindow = (props, context) => {
-  const { act, data } = useBackend<PreferencesMenuData>(context);
+export const CharacterPreferenceWindow = (props) => {
+  const { act, data } = useBackend<PreferencesMenuData>();
 
-  const [currentPage, setCurrentPage] = useLocalState(
-    context,
-    'currentPage',
-    Page.Main
-  );
+  const [currentPage, setCurrentPage] = useLocalState('currentPage', Page.Main);
 
   let pageContents;
 
@@ -104,12 +100,6 @@ export const CharacterPreferenceWindow = (props, context) => {
               profiles={data.character_profiles}
             />
           </Stack.Item>
-
-          {!data.content_unlocked && (
-            <Stack.Item align="center">
-              Buy BYOND premium for more slots!
-            </Stack.Item>
-          )}
 
           <Stack.Divider />
 

@@ -1,6 +1,6 @@
-import { BooleanLike } from 'common/react';
 import { useBackend } from '../backend';
 import { Box, Collapsible, Divider, LabeledList, Section, Stack } from '../components';
+import { Objective } from './common/Objectives';
 
 import { Window } from '../layouts';
 
@@ -9,21 +9,12 @@ type Data = {
   description: string;
   effects: string;
   name: string;
-  objectives: Objectives[];
-};
-
-type Objectives = {
-  count: number;
-  name: string;
-  explanation: string;
-  complete: BooleanLike;
-  was_uncompleted: BooleanLike;
-  reward: number;
+  objectives: Objective[];
 };
 
 const BLOB_COLOR = '#556b2f';
 
-export const AntagInfoBlob = (props, context) => {
+export const AntagInfoBlob = (props) => {
   return (
     <Window width={400} height={550}>
       <Window.Content>
@@ -40,8 +31,8 @@ export const AntagInfoBlob = (props, context) => {
   );
 };
 
-const Overview = (props, context) => {
-  const { data } = useBackend<Data>(context);
+const Overview = (props) => {
+  const { data } = useBackend<Data>();
   const { color, description, effects, name } = data;
 
   if (!name) {
@@ -98,7 +89,7 @@ const Overview = (props, context) => {
   );
 };
 
-const Basics = (props, context) => {
+const Basics = (props) => {
   return (
     <Collapsible title="The Basics">
       <LabeledList>
@@ -127,7 +118,7 @@ const Basics = (props, context) => {
   );
 };
 
-const Minions = (props, context) => {
+const Minions = (props) => {
   return (
     <Collapsible title="Minions">
       <LabeledList>
@@ -146,7 +137,7 @@ const Minions = (props, context) => {
   );
 };
 
-const Structures = (props, context) => {
+const Structures = (props) => {
   return (
     <Collapsible title="Structures">
       <Box>
@@ -182,8 +173,8 @@ const Structures = (props, context) => {
   );
 };
 
-const ObjectiveDisplay = (props, context) => {
-  const { data } = useBackend<Data>(context);
+const ObjectiveDisplay = (props) => {
+  const { data } = useBackend<Data>();
   const { color, objectives } = data;
 
   return (

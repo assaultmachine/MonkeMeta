@@ -4,6 +4,7 @@
 	antag_flag = ROLE_REV_HEAD
 	antag_datum = /datum/antagonist/rev/head/event_trigger
 	typepath = /datum/round_event/antagonist/solo/revolutionary
+	shared_occurence_type = SHARED_HIGH_THREAT
 	restricted_roles = list(
 		JOB_AI,
 		JOB_CAPTAIN,
@@ -24,6 +25,7 @@
 		JOB_DETECTIVE,
 		JOB_HEAD_OF_SECURITY,
 		JOB_SECURITY_OFFICER,
+		JOB_SECURITY_ASSISTANT,
 		JOB_WARDEN,
 	)
 	required_enemies = 6
@@ -31,7 +33,7 @@
 	min_players = 35
 	roundstart = TRUE
 	earliest_start = 0 SECONDS
-	weight = 0 //value was 3, we need to manually test if this works or not before allowing it normally
+	weight = 3 //value was 3, we need to manually test if this works or not before allowing it normally
 	max_occurrences = 1
 
 /datum/antagonist/rev/head/event_trigger
@@ -61,6 +63,8 @@
 	revolution.round_result(finished)
 
 /datum/round_event/antagonist/solo/revolutionary/tick()
+	if(finished)
+		return
 	var/winner = revolution.process_victory()
 	if(isnull(winner))
 		return

@@ -58,8 +58,8 @@
 	src.expiration = expiration
 
 /datum/component/anti_magic/Destroy(force, silent)
-	QDEL_NULL(drain_antimagic)
-	QDEL_NULL(expiration)
+	drain_antimagic = null
+	expiration = null
 	return ..()
 
 /datum/component/anti_magic/proc/on_equip(datum/source, mob/equipper, slot)
@@ -130,7 +130,7 @@
 			antimagic_color = LIGHT_COLOR_DARK_BLUE
 			playsound(user, 'sound/magic/magic_block_mind.ogg', 50, TRUE)
 
-		user.mob_light(_range = 2, _color = antimagic_color, _duration = 5 SECONDS)
+		user.mob_light(range = 2, color = antimagic_color, duration = 5 SECONDS)
 		user.add_overlay(antimagic_effect)
 		addtimer(CALLBACK(user, TYPE_PROC_REF(/atom, cut_overlay), antimagic_effect), 50)
 
